@@ -21,12 +21,12 @@ return new class extends Migration
             $table->string('SDT');
             $table->date('ngayBatDau');
             $table->date('ngayKetThuc')->nullable();
-            $table->string('trangThaiKhuonMat')->nullable();
+            $table->boolean('trangThaiKhuonMat')->nullable(); // Sử dụng kiểu boolean
+            $table->string('IMG')->nullable(); // Thêm thuộc tính IMG
             $table->foreignId('maVaiTro')->constrained('vaitro');
             $table->foreignId('maCongTy')->constrained('congty');
             $table->timestamps();
         });
-        
     }
 
     /**

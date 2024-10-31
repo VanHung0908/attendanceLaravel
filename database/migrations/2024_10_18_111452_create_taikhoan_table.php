@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('taikhoan', function (Blueprint $table) {
-            $table->id();
-            $table->string('tenDN', 191)->unique();
+            // Xóa cột id và biến tenDN thành khóa chính
+            $table->string('tenDN', 191)->primary(); // Đặt tenDN là khóa chính
             $table->string('matKhau');
             $table->foreignId('maND')->constrained('nguoidung')->onDelete('cascade');
             $table->timestamps();

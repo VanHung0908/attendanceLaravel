@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('kinhDo');
             $table->string('viDo');
             $table->string('trangThai');
+            $table->foreignId('maCongTy')->constrained('congty')->onDelete('cascade'); 
+            $table->foreignId('maND')->constrained('nguoidung')->onDelete('cascade'); 
             $table->timestamps();
         });
     }
