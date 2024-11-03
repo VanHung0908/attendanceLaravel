@@ -49,9 +49,9 @@ class NguoiDungSeeder extends Seeder
         ]);
 
         DB::table('taikhoan')->insert([
-            'tenDN' => '02002',
+            'tenDN' => '01002',
             'matKhau' => bcrypt('123'), // Mã hóa mật khẩu
-            'maND' => $managerId
+            'maND' => $managerId    
         ]);
 
         // Thêm nhân viên
@@ -64,13 +64,13 @@ class NguoiDungSeeder extends Seeder
             'SDT' => '0353627994',
             'ngayBatDau' => '2024-10-10',
             'trangThaiKhuonMat' => 0, // Đặt thành 0
-            'IMG' => null, // Giá trị IMG có thể NULL
+            'IMG' => 'hung.jpg', // Giá trị IMG có thể NULL
             'maVaiTro' => 3, // Nhân viên
             'maCongTy' => 1, // Công ty 1
         ]);
 
         DB::table('taikhoan')->insert([
-            'tenDN' => '03003',
+            'tenDN' => '01003',
             'matKhau' => bcrypt('123'), // Mã hóa mật khẩu
             'maND' => $employeeId
         ]);

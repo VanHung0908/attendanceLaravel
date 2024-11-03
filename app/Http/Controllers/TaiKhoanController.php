@@ -45,16 +45,16 @@ class TaiKhoanController extends Controller
         ]);
     }
     public function changePassword(Request $request)
-{
-    // Xác thực dữ liệu đầu vào
-    $request->validate([
-        'maND' => 'required|integer',
-        'matKhauCu' => 'required|string',
-        'matKhauMoi' => 'required|string|min:6|confirmed', // thêm 'confirmed' để xác nhận mật khẩu mới
-    ]);
+    {
+        // Xác thực dữ liệu đầu vào
+        $request->validate([
+            'maND' => 'required|integer',
+            'matKhauCu' => 'required|string',
+            'matKhauMoi' => 'required|string|min:6|confirmed', // thêm 'confirmed' để xác nhận mật khẩu mới
+        ]);
 
     // Tìm tài khoản theo mã người dùng
-    $taiKhoan = TaiKhoan::find($request->maND);
+    $taiKhoan = TaiKhoan::where('maND', $request->maND)->first();
 
     // Kiểm tra xem tài khoản có tồn tại không và mật khẩu cũ có đúng không
     if (!$taiKhoan || !Hash::check($request->matKhauCu, $taiKhoan->matKhau)) {

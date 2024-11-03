@@ -17,6 +17,7 @@ return new class extends Migration
             $table->time('gioCheckout')->nullable();
             $table->date('ngay');
             $table->integer('tongGioLam')->nullable();
+            $table->float('cong', 3, 2)->nullable();
             $table->foreignId('maND')->constrained('nguoidung');
             $table->timestamps();
         });

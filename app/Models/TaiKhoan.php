@@ -9,7 +9,7 @@ class TaiKhoan extends Model
 {
     use HasFactory;
     protected $table = 'taikhoan';
-
+    protected $primaryKey = 'maND';
     // Các thuộc tính mà bạn có thể gán giá trị
     protected $fillable = [
         'tenDN',      // Tên đăng nhập
