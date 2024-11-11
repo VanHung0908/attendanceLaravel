@@ -24,6 +24,7 @@ Route::post('/locations/active', [ViTriController::class, 'getActiveLocation']);
 Route::get('/employees', [NguoiDungController::class, 'getEmployees']);
 Route::post('/baocaochamcong', [ChamCongController::class, 'getChamCongByPeriod']);
 Route::post('/exportexcel', [ChamCongController::class, 'export']);
+Route::post('/updateWorkHours', [CongTyController::class, 'updateWorkHours']);
 // Phú 
 Route::get('/congty', [CongTyController::class, 'getCompany']);
 Route::post('/congty', [CongTyController::class, 'storeCompany']);

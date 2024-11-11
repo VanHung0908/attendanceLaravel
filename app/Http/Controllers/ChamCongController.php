@@ -7,7 +7,8 @@ use App\Models\ChamCong;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ChamCongExport;
-
+use App\Models\CongTy;
+use App\Models\NguoiDung;
 class ChamCongController extends Controller
 {
     public function chamCong(Request $request)
@@ -17,11 +18,30 @@ class ChamCongController extends Controller
         $currentTime = Carbon::now()->format('H:i:s');
 
         try {
+            $user = NguoiDung::where('maND', $userId)->first();
+
+            if (!$user) {
+                return response()->json(['message' => 'Không tìm thấy người dùng.'], 404);
+            }
+
+            $maCongTy = $user->maCongTy;  // Lấy maCongTy từ người dùng
+
+            // Lấy giờ nghỉ (gioNghi) từ bảng congty theo maCongTy
+            $company = CongTy::where('maCongTy', $maCongTy)->first();
+
+            if (!$company) {
+                return response()->json(['message' => 'Không tìm thấy thông tin công ty.'], 404);
+            }
+
+            $gioNghi = $company->gioNghi;  // Lấy giờ nghỉ của công ty
+
+            // Truy vấn bảng ChamCong để xem người dùng đã chấm công chưa
             $chamCong = ChamCong::where('maND', $userId)
                                 ->where('ngay', $currentDate)
                                 ->first();
 
             if (!$chamCong) {
+                // Nếu chưa có chấm công, tạo bản ghi mới
                 $chamCong = ChamCong::create([
                     'maND' => $userId,
                     'ngay' => $currentDate,
@@ -30,6 +50,7 @@ class ChamCongController extends Controller
 
                 return response()->json(['message' => 'Check-in thành công!', 'data' => $chamCong], 200);
             } elseif (!$chamCong->gioCheckout) {
+                // Nếu đã check-in nhưng chưa check-out, tiến hành check-out
                 $chamCong->update(['gioCheckout' => $currentTime]);
 
                 $gioCheckin = Carbon::parse($chamCong->gioCheckin);
@@ -40,6 +61,13 @@ class ChamCongController extends Controller
 
                 // Tính tổng giờ làm (chuyển sang dạng float)
                 $tongGioLam = $tongPhutLam / 60;
+
+                // Trừ giờ nghỉ
+                $gioNghi = $chamCong->gioNghi; // Giả sử trường gioNghi trong bảng ChamCong chứa dữ liệu nghỉ
+                $gioNghiFloat = (float)$gioNghi;
+
+                // Trừ giờ nghỉ vào tổng giờ làm
+                $tongGioLam -= $gioNghiFloat;
 
                 // Tính số công
                 $cong = 0; // Mặc định là 0
@@ -61,12 +89,33 @@ class ChamCongController extends Controller
         }
     }
 
+
     public function thongKeCong(Request $request)
     {
         $userId = $request->input('maND');
         $currentMonth = Carbon::now()->format('Y-m');
 
         try {
+            // Lấy maCongTy từ bảng nguoidung theo maND
+            $user = NguoiDung::where('maND', $userId)->first();
+
+            if (!$user) {
+                return response()->json(['message' => 'Không tìm thấy người dùng.'], 404);
+            }
+
+            $maCongTy = $user->maCongTy;  // Lấy maCongTy từ người dùng
+
+            // Lấy giờ làm việc (gioBatDau và gioKetThuc) từ bảng congty
+            $companyWorkHours = CongTy::where('maCongTy', $maCongTy)->first();
+
+            if (!$companyWorkHours) {
+                return response()->json(['message' => 'Không tìm thấy thông tin giờ làm việc của công ty.'], 404);
+            }
+
+            $gioBatDau = $companyWorkHours->gioBatDau;
+            $gioKetThuc = $companyWorkHours->gioKetThuc;
+
+            // Lấy các bản ghi chấm công trong tháng hiện tại
             $chamCongRecords = ChamCong::where('maND', $userId)
                                         ->where('ngay', 'like', "$currentMonth%")
                                         ->get();
@@ -77,17 +126,19 @@ class ChamCongController extends Controller
 
             foreach ($chamCongRecords as $record) {
                 if ($record->cong) {
-                    $tongCong += (float) $record->cong; 
+                    $tongCong += (float) $record->cong;
                 }
 
-                if ($record->gioCheckin && Carbon::parse($record->gioCheckin)->greaterThan('08:00:00')) {
+                // Kiểm tra nếu giờ checkin trễ hơn giờ bắt đầu (gioBatDau)
+                if ($record->gioCheckin && Carbon::parse($record->gioCheckin)->greaterThan(Carbon::parse($gioBatDau))) {
                     $ngayDiTre[] = [
                         'ngay' => $record->ngay,
                         'gioCheckin' => $record->gioCheckin,
                     ];
                 }
 
-                if ($record->gioCheckout && Carbon::parse($record->gioCheckout)->lessThan('17:00:00')) {
+                // Kiểm tra nếu giờ checkout sớm hơn giờ kết thúc (gioKetThuc)
+                if ($record->gioCheckout && Carbon::parse($record->gioCheckout)->lessThan(Carbon::parse($gioKetThuc))) {
                     $ngayVeSom[] = [
                         'ngay' => $record->ngay,
                         'gioCheckout' => $record->gioCheckout,
@@ -132,39 +183,63 @@ class ChamCongController extends Controller
         $userId = $request->input('maND');
         $startDate = $request->input('startDate');
         $endDate = $request->input('endDate');
-
+    
         try {
+            // Lấy maCongTy từ bảng nguoidung theo maND
+            $user = NguoiDung::where('maND', $userId)->first();
+    
+            if (!$user) {
+                return response()->json(['message' => 'Không tìm thấy người dùng.'], 404);
+            }
+    
+            $maCongTy = $user->maCongTy;  // Lấy maCongTy từ người dùng
+    
+            // Lấy giờ làm việc (gioBatDau và gioKetThuc) từ bảng congty
+            $companyWorkHours = CongTy::where('maCongTy', $maCongTy)->first();
+    
+            if (!$companyWorkHours) {
+                return response()->json(['message' => 'Không tìm thấy thông tin giờ làm việc của công ty.'], 404);
+            }
+    
+            $gioBatDau = $companyWorkHours->gioBatDau;
+            $gioKetThuc = $companyWorkHours->gioKetThuc;
+    
+            // Lấy các bản ghi chấm công trong khoảng thời gian
             $chamCongRecords = ChamCong::where('maND', $userId)
-                                    ->whereBetween('ngay', [$startDate, $endDate])
-                                    ->get();
-
+                                        ->whereBetween('ngay', [$startDate, $endDate])
+                                        ->get();
+    
             if ($chamCongRecords->isEmpty()) {
                 return response()->json(['message' => 'Không tìm thấy bản ghi chấm công trong khoảng thời gian đã cho.'], 404);
             }
-
+    
             $tongCong = 0.0;
             $ngayDiTre = [];
             $ngayVeSom = [];
-
+    
             foreach ($chamCongRecords as $record) {
-                if ($record->gioCheckin && Carbon::parse($record->gioCheckin)->greaterThan('08:00:00')) {
+                // Cập nhật tổng công
+                if ($record->cong) {
+                    $tongCong += (float) $record->cong;
+                }
+    
+                // Kiểm tra nếu giờ checkin trễ hơn giờ bắt đầu (gioBatDau)
+                if ($record->gioCheckin && Carbon::parse($record->gioCheckin)->greaterThan(Carbon::parse($gioBatDau))) {
                     $ngayDiTre[] = [
                         'ngay' => $record->ngay,
                         'gioCheckin' => $record->gioCheckin,
                     ];
                 }
-
-                if ($record->gioCheckout && Carbon::parse($record->gioCheckout)->lessThan('17:00:00')) {
+    
+                // Kiểm tra nếu giờ checkout sớm hơn giờ kết thúc (gioKetThuc)
+                if ($record->gioCheckout && Carbon::parse($record->gioCheckout)->lessThan(Carbon::parse($gioKetThuc))) {
                     $ngayVeSom[] = [
                         'ngay' => $record->ngay,
                         'gioCheckout' => $record->gioCheckout,
                     ];
                 }
-
-                // Cập nhật tổng công
-                $tongCong += (float) $record->cong; // Chuyển đổi sang float
             }
-
+    
             return response()->json([
                 'tongCong' => $tongCong,
                 'soNgayDiTre' => count($ngayDiTre),
@@ -197,7 +272,7 @@ class ChamCongController extends Controller
         } elseif ($period == "2 Tuần") {
             $startDate = $startDate->copy()->subDays(14); // Ngày bắt đầu là 14 ngày trước
         } elseif ($period == "1 Tháng") {
-            $startDate = $startDate->copy()->startOfMonth(); // Ngày bắt đầu là đầu tháng
+            $startDate = $startDate->copy()->subDays(30); // Ngày bắt đầu là đầu tháng
         } elseif ($period == "Tùy Chọn") {
             if (!$request->start_date || !$request->end_date) {
                 return response()->json(['error' => 'Start date and end date are required for custom period'], 400);
@@ -207,13 +282,29 @@ class ChamCongController extends Controller
             $endDate = Carbon::parse($request->end_date)->endOfDay();
         }
     
+        // Lấy thông tin giờ làm việc từ bảng CongTy theo maCongTy của người dùng
+        $user = NguoiDung::where('maND', $maND)->first();
+        if (!$user) {
+            return response()->json(['message' => 'Không tìm thấy người dùng.'], 404);
+        }
+    
+        $maCongTy = $user->maCongTy; // Lấy maCongTy từ người dùng
+    
+        $companyWorkHours = CongTy::where('maCongTy', $maCongTy)->first();
+        if (!$companyWorkHours) {
+            return response()->json(['message' => 'Không tìm thấy thông tin giờ làm việc của công ty.'], 404);
+        }
+    
+        $gioBatDau = $companyWorkHours->gioBatDau;
+        $gioKetThuc = $companyWorkHours->gioKetThuc;
+    
         // Lấy thông tin chấm công trong khoảng thời gian
         $attendance = ChamCong::where('maND', $maND)
             ->whereBetween(\DB::raw('DATE(ngay)'), [$startDate->toDateString(), $endDate->toDateString()])
             ->get();
     
         // Xử lý thông tin chấm công và tính toán status cho từng ngày
-        $attendanceData = $attendance->map(function ($entry) {
+        $attendanceData = $attendance->map(function ($entry) use ($gioBatDau, $gioKetThuc) {
             $entry->status = 'Vắng mặt'; // Mặc định là vắng mặt
     
             if ($entry->gioCheckin && $entry->gioCheckout) {
@@ -221,11 +312,13 @@ class ChamCongController extends Controller
                 $entry->status = 'Có mặt';
             }
     
-            if ($entry->gioCheckin && $entry->gioCheckin > '08:00:00') {
+            // Kiểm tra nếu giờ checkin trễ hơn giờ bắt đầu (gioBatDau)
+            if ($entry->gioCheckin && Carbon::parse($entry->gioCheckin)->greaterThan(Carbon::parse($gioBatDau))) {
                 $entry->status = 'Đi trễ';
             }
     
-            if ($entry->gioCheckout && $entry->gioCheckout < '17:00:00') {
+            // Kiểm tra nếu giờ checkout sớm hơn giờ kết thúc (gioKetThuc)
+            if ($entry->gioCheckout && Carbon::parse($entry->gioCheckout)->lessThan(Carbon::parse($gioKetThuc))) {
                 $entry->status = 'Về sớm';
             }
     
@@ -234,8 +327,7 @@ class ChamCongController extends Controller
     
         return response()->json($attendanceData);
     }
-   
-
+    
     public function export(Request $request)
     {
         // Kiểm tra tham số đầu vào

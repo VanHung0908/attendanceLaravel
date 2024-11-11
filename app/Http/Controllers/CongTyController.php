@@ -116,6 +116,38 @@ class CongTyController extends Controller
             ], 500);
         }
     }
-    
+    public function updateWorkHours(Request $request)
+    {
+        // Validating the input data
+        $validatedData = $request->validate([
+            'maCongTy' => 'required|exists:congty,maCongTy',
+            'gioBatDau' => 'nullable|date_format:H:i',
+            'gioKetThuc' => 'nullable|date_format:H:i',
+            'gioNghi' => 'nullable|string',
+        ]);
+
+        // Tìm công ty theo mã công ty
+        $congTy = CongTy::find($validatedData['maCongTy']);
+
+        // Cập nhật các trường giờ nếu có dữ liệu mới
+        if (isset($validatedData['gioBatDau'])) {
+            $congTy->gioBatDau = $validatedData['gioBatDau'];
+        }
+        if (isset($validatedData['gioKetThuc'])) {
+            $congTy->gioKetThuc = $validatedData['gioKetThuc'];
+        }
+        if (isset($validatedData['gioNghi'])) {
+            $congTy->gioNghi = $validatedData['gioNghi'];
+        }
+
+        // Lưu lại thông tin đã cập nhật
+        $congTy->save();
+
+        // Trả về phản hồi thành công
+        return response()->json([
+            'message' => 'Cập nhật giờ làm việc thành công',
+            'data' => $congTy
+        ]);
+    }
 }
 
