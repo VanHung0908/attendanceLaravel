@@ -19,6 +19,9 @@ return new class extends Migration
             $table->string('email');
             $table->string('nguoiDaiDien');
             $table->string('linhVucKinhDoanh');
+            $table->time('gioBatDau')->nullable();
+            $table->time('gioKetThuc')->nullable();
+            $table->time('gioNghi')->nullable();
             $table->string('trangThai');
             $table->timestamps();
         });

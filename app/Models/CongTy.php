@@ -9,9 +9,9 @@ class CongTy extends Model
 {
     use HasFactory;
 
-    protected $table = 'congty'; // Tên bảng
+    protected $table = 'congty'; 
 
-    protected $primaryKey = 'maCongTy'; // Khóa chính của bảng
+    protected $primaryKey = 'maCongTy'; 
 
     protected $fillable = [
         'tenCongTy',
@@ -21,9 +21,8 @@ class CongTy extends Model
         'nguoiDaiDien',
         'linhVucKinhDoanh',
         'trangThai',
-    ]; // Các thuộc tính có thể gán giá trị hàng loạt
+    ]; 
 
-    // Phương thức thiết lập quan hệ với model NguoiDung
     public function nguoiDungs()
     {
         return $this->hasMany(NguoiDung::class, 'maCongTy', 'maCongTy');

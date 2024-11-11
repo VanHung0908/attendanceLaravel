@@ -44,4 +44,8 @@ class NguoiDung extends Model
     {
         return $this->belongsTo(CongTy::class, 'maCongTy');
     }
+    public function chamcong()
+    {
+        return $this->hasMany(ChamCong::class, 'maND', 'maND');
+    }
 }

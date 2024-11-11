@@ -9,29 +9,40 @@ use Illuminate\Support\Facades\Hash;
 class TaiKhoanController extends Controller
 {
     public function login(Request $request)
-    {
-        // Xác thực dữ liệu đầu vào
-        $request->validate([
-            'tenDN' => 'required|string',
-            'matKhau' => 'required|string',
-        ]);
+{
+    // Xác thực dữ liệu đầu vào
+    $request->validate([
+        'tenDN' => 'required|string',
+        'matKhau' => 'required|string',
+    ]);
 
-        // Tìm tài khoản theo tên đăng nhập
-        $taiKhoan = TaiKhoan::where('tenDN', $request->tenDN)->first();
+    // Tìm tài khoản theo tên đăng nhập
+    $taiKhoan = TaiKhoan::where('tenDN', $request->tenDN)->first();
 
-        // Kiểm tra xem tài khoản có tồn tại không
-        if (!$taiKhoan || !Hash::check($request->matKhau, $taiKhoan->matKhau)) {
-            return response()->json([
-                'message' => 'Tên đăng nhập hoặc mật khẩu không đúng.'
-            ], 401);
-        }
-
-        // Trả về chỉ trường maND của tài khoản
+    // Kiểm tra xem tài khoản có tồn tại không
+    if (!$taiKhoan || !Hash::check($request->matKhau, $taiKhoan->matKhau)) {
         return response()->json([
-            'message' => 'Đăng nhập thành công.',
-            'maND' => $taiKhoan->maND 
-        ]);
+            'message' => 'Tên đăng nhập hoặc mật khẩu không đúng.'
+        ], 401);
     }
+
+    // Kiểm tra xem đây có phải lần đăng nhập đầu tiên hay không
+    $isFirstLogin = $taiKhoan->is_first_login;
+
+    // Nếu là lần đăng nhập đầu tiên, cập nhật trạng thái
+    if ($isFirstLogin) {
+        $taiKhoan->is_first_login = false;
+        $taiKhoan->save();
+    }
+
+    // Trả về phản hồi
+    return response()->json([
+        'message' => 'Đăng nhập thành công.',
+        'maND' => $taiKhoan->maND,
+        'isFirstLogin' => $isFirstLogin
+    ]);
+}
+
 
     public function getAllTaiKhoan()
     {

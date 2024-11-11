@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\ChamCong;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ChamCongExport;
 
 class ChamCongController extends Controller
 {
@@ -174,4 +176,123 @@ class ChamCongController extends Controller
             return response()->json(['message' => 'Đã xảy ra lỗi khi lấy báo cáo chấm công.', 'error' => $e->getMessage()], 500);
         }
     }
+    public function getChamCongByPeriod(Request $request)
+    {
+        $validated = $request->validate([
+            'maND' => 'required|integer',
+            'period' => 'required|string', // 1 Tuần, 2 Tuần, 1 Tháng, Tùy Chọn
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+        ]);
+    
+        $maND = $validated['maND'];
+        $period = $validated['period'];
+    
+        $startDate = Carbon::today(); // Ngày hiện tại
+        $endDate = $startDate; // Ngày kết thúc mặc định là ngày hôm nay
+    
+        // Xác định thời gian bắt đầu và kết thúc dựa trên period
+        if ($period == "1 Tuần") {
+            $startDate = $startDate->copy()->subDays(7); // Ngày bắt đầu là 7 ngày trước
+        } elseif ($period == "2 Tuần") {
+            $startDate = $startDate->copy()->subDays(14); // Ngày bắt đầu là 14 ngày trước
+        } elseif ($period == "1 Tháng") {
+            $startDate = $startDate->copy()->startOfMonth(); // Ngày bắt đầu là đầu tháng
+        } elseif ($period == "Tùy Chọn") {
+            if (!$request->start_date || !$request->end_date) {
+                return response()->json(['error' => 'Start date and end date are required for custom period'], 400);
+            }
+            // Xử lý ngày bắt đầu và kết thúc cho tùy chọn
+            $startDate = Carbon::parse($request->start_date)->startOfDay();
+            $endDate = Carbon::parse($request->end_date)->endOfDay();
+        }
+    
+        // Lấy thông tin chấm công trong khoảng thời gian
+        $attendance = ChamCong::where('maND', $maND)
+            ->whereBetween(\DB::raw('DATE(ngay)'), [$startDate->toDateString(), $endDate->toDateString()])
+            ->get();
+    
+        // Xử lý thông tin chấm công và tính toán status cho từng ngày
+        $attendanceData = $attendance->map(function ($entry) {
+            $entry->status = 'Vắng mặt'; // Mặc định là vắng mặt
+    
+            if ($entry->gioCheckin && $entry->gioCheckout) {
+                // Nếu có checkin và checkout, tính số công
+                $entry->status = 'Có mặt';
+            }
+    
+            if ($entry->gioCheckin && $entry->gioCheckin > '08:00:00') {
+                $entry->status = 'Đi trễ';
+            }
+    
+            if ($entry->gioCheckout && $entry->gioCheckout < '17:00:00') {
+                $entry->status = 'Về sớm';
+            }
+    
+            return $entry;
+        });
+    
+        return response()->json($attendanceData);
+    }
+   
+
+    public function export(Request $request)
+    {
+        // Kiểm tra tham số đầu vào
+        $startDate = $request->input('startDate');
+        $endDate = $request->input('endDate');
+        $maND = $request->input('maND');
+        $isSelectAll = $request->input('isSelectAll') === '1';
+        $maCongTy = $request->input('maCongTy'); // Nhận thông tin mã công ty từ request
+    
+        // Kiểm tra nếu thiếu tham số quan trọng
+        if (!$startDate || !$endDate) {
+            return response()->json(['error' => 'Thiếu thông tin ngày bắt đầu hoặc ngày kết thúc'], 400);
+        }
+    
+        // Lấy dữ liệu từ bảng chấm công
+        $query = ChamCong::whereBetween('ngay', [$startDate, $endDate]);
+    
+        // Nếu chọn nhân viên cụ thể
+        if ($maND && !$isSelectAll) {
+            $query->where('maND', $maND);
+        }
+    
+        // Nếu chọn công ty cụ thể, lọc theo mã công ty
+        if ($maCongTy) {
+            $query->whereHas('nguoidung', function($query) use ($maCongTy) {
+                $query->where('maCongTy', $maCongTy);
+            });
+        }
+    
+        // Lấy dữ liệu
+        $data = $query->with('nguoidung')->get();
+    
+        // Kiểm tra nếu không có dữ liệu
+        if ($data->isEmpty()) {
+            return response()->json(['error' => 'Không có dữ liệu'], 404);
+        }
+    
+        $date = \Carbon\Carbon::now()->format('Hisdmy'); 
+    
+        // Tạo tên file với ngày tháng năm
+        $fileName = 'chamcong_report_' . $date . '.xlsx';
+    
+        // Tạo đối tượng xuất Excel
+        $export = new ChamCongExport($data);
+    
+        // Lưu file vào đường dẫn tạm thời
+        $pathToFile = storage_path('app/public/' . $fileName);
+    
+        // Xuất tệp Excel và lưu vào thư mục tạm
+        Excel::store($export, 'public/' . $fileName);
+    
+        // Trả về tệp Excel để người dùng tải về
+        return response()->download($pathToFile, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+    
+
+
 }

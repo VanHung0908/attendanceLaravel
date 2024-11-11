@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use App\Mail\AccountCreatedMail; 
+use Illuminate\Support\Facades\Mail; 
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class NguoiDungController extends Controller
 {
@@ -200,7 +204,7 @@ class NguoiDungController extends Controller
             'username' => $request->username,
             'password' => bcrypt($request->password), // Mã hóa mật khẩu
         ]);
-
+       
         return response()->json([
             'message' => 'Tài khoản đã được tạo thành công!',
             'nguoiDung' => $nguoiDung,
@@ -230,6 +234,27 @@ class NguoiDungController extends Controller
 
         // Trả về dữ liệu nhân viên
         return response()->json($nhanVien);
+    }
+    public function getEmployeeByCompanyID($companyID)
+    {
+        // Lấy danh sách nhân viên thuộc công ty có companyID và có maVaiTro = 3
+        $employees = NguoiDung::where('maCongTy', $companyID)
+                        ->where('maVaiTro', 3)
+                        ->get();
+    
+        // Kiểm tra nếu không có nhân viên nào được tìm thấy
+        if ($employees->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không có nhân viên nào được tìm thấy cho công ty này.',
+            ], 404);
+        }
+    
+        // Trả về danh sách nhân viên
+        return response()->json([
+            'success' => true,
+            'data' => $employees,
+        ], 200);
     }
     public function addEmployee(Request $request)
     {
@@ -269,15 +294,20 @@ class NguoiDungController extends Controller
                 'maVaiTro' => 3, // Mã vai trò
                 'maCongTy' => $request->maCongTy,
             ]);
-    
+            $matKhau = Str::random(8);
             // Tạo tài khoản cho người dùng mới
             TaiKhoan::create([
                 'tenDN' => $tenTaiKhoan,
-                'matKhau' => bcrypt('123'), // Mật khẩu mặc định đã được mã hóa
+                'matKhau' => bcrypt($matKhau), // Mật khẩu mặc định đã được mã hóa
                 'maND' => $nhanVien->maND, // Liên kết tài khoản với người dùng
             ]);
-    
-            // Trả về kết quả thành công với status code 201
+            try {
+                Mail::to($request->email)->queue(new AccountCreatedMail($tenTaiKhoan, $matKhau));
+                Log::info('Email sent successfully to ' . $request->email);
+            } catch (\Exception $e) {
+                Log::error('Error sending email: ' . $e->getMessage());
+                return response()->json(['message' => 'Có lỗi xảy ra: ' . $e->getMessage()], 500);
+            }
             return response()->json(['message' => 'Nhân viên được tạo thành công', 'nhanVien' => $nhanVien, 'tenTaiKhoan' => $tenTaiKhoan], 201);
         } catch (\Exception $e) {
             // Xử lý lỗi, trả về status code 500 và thông báo lỗi
@@ -323,22 +353,26 @@ class NguoiDungController extends Controller
                 'maVaiTro' => 2, // Mã vai trò
                 'maCongTy' => $request->maCongTy,
             ]);
-    
+            $matKhau = Str::random(8);
             // Tạo tài khoản cho người dùng mới
             TaiKhoan::create([
                 'tenDN' => $tenTaiKhoan,
-                'matKhau' => bcrypt('123'), // Mật khẩu mặc định đã được mã hóa
+                'matKhau' => bcrypt($matKhau), // Mật khẩu mặc định đã được mã hóa
                 'maND' => $nhanVien->maND, // Liên kết tài khoản với người dùng
             ]);
-    
-            // Trả về kết quả thành công với status code 201
+            try {
+                Mail::to($request->email)->queue(new AccountCreatedMail($tenTaiKhoan, $matKhau));
+                Log::info('Email sent successfully to ' . $request->email);
+            } catch (\Exception $e) {
+                Log::error('Error sending email: ' . $e->getMessage());
+                return response()->json(['message' => 'Có lỗi xảy ra: ' . $e->getMessage()], 500);
+            }
             return response()->json(['message' => 'Nhân viên được tạo thành công', 'nhanVien' => $nhanVien, 'tenTaiKhoan' => $tenTaiKhoan], 201);
         } catch (\Exception $e) {
             // Xử lý lỗi, trả về status code 500 và thông báo lỗi
             return response()->json(['message' => 'Có lỗi xảy ra: ' . $e->getMessage()], 500);
         }
     }
-
     public function deleteEmployee($maND)
     {
         try {
@@ -368,4 +402,49 @@ class NguoiDungController extends Controller
             return response()->json(['message' => 'Có lỗi xảy ra: ' . $e->getMessage()], 500);
         }
     }
+    // Hung
+    public function getEmployees(Request $request)
+    {
+        try {
+            $companyId = $request->input('maCongTy');
+            $search = $request->input('search', '');
+            
+            // Thêm điều kiện lọc theo mã vai trò là 3
+            $employees = NguoiDung::where('maCongTy', $companyId)
+                                  ->where('maVaiTro', 3)  
+                                  ->where('hoTen', 'like', '%' . $search . '%')  
+                                  ->get(['hoTen', 'maND']);
+            
+            return response()->json($employees);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    public function updateEmployee(Request $request, $maND)
+    {
+        // Tìm nhân viên theo mã
+        $employee = NguoiDung::where('maND', $maND)->first();
+
+        // Kiểm tra xem nhân viên có tồn tại không
+        if (!$employee) {
+            return response()->json(['message' => 'Nhân viên không tồn tại'], 404);
+        }
+
+        // Xác thực dữ liệu đầu vào với các trường có thể được gửi
+        $validatedData = $request->validate([
+            'hoTen' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'SDT' => 'nullable|string|max:15',
+        ]);
+
+        // Cập nhật thông tin nhân viên
+        $employee->update(array_filter($validatedData));
+
+        return response()->json([
+            'message' => 'Cập nhật thông tin nhân viên thành công',
+            'employee' => $employee
+        ], 200);
+    }
+    
+
 }

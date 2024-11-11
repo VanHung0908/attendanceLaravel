@@ -25,4 +25,10 @@ class ChamCong extends Model
         'cong',
         'maND'
     ];
+
+    public function nguoidung()
+    {
+        return $this->belongsTo(NguoiDung::class, 'maND', 'maND');
+    }
+
 }

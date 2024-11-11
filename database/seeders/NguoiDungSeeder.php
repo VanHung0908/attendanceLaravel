@@ -21,15 +21,15 @@ class NguoiDungSeeder extends Seeder
             'email' => 'BaoTran@gmail.com',
             'SDT' => '0123456789',
             'ngayBatDau' => '2024-10-10',
-            'trangThaiKhuonMat' => 0, // Đặt thành 0
-            'IMG' => null, // Giá trị IMG có thể NULL
-            'maVaiTro' => 1, // Admin
-            'maCongTy' => 1, // Công ty 1
+            'trangThaiKhuonMat' => 0, 
+            'IMG' => null, 
+            'maVaiTro' => 1, 
+            'maCongTy' => 1, 
         ]);
 
         DB::table('taikhoan')->insert([
             'tenDN' => '01001',
-            'matKhau' => bcrypt('123'), // Mã hóa mật khẩu
+            'matKhau' => bcrypt('123'), 
             'maND' => $adminId
         ]);
 
@@ -42,15 +42,15 @@ class NguoiDungSeeder extends Seeder
             'email' => 'thanhphu@gmail.com',
             'SDT' => '0987654321',
             'ngayBatDau' => '2024-10-10',
-            'trangThaiKhuonMat' => 0, // Đặt thành 0
-            'IMG' => null, // Giá trị IMG có thể NULL
-            'maVaiTro' => 2, // Quản lý
-            'maCongTy' => 1, // Công ty 1
+            'trangThaiKhuonMat' => 0, 
+            'IMG' => null, 
+            'maVaiTro' => 2, 
+            'maCongTy' => 1, 
         ]);
 
         DB::table('taikhoan')->insert([
             'tenDN' => '01002',
-            'matKhau' => bcrypt('123'), // Mã hóa mật khẩu
+            'matKhau' => bcrypt('123'), 
             'maND' => $managerId    
         ]);
 
@@ -63,15 +63,15 @@ class NguoiDungSeeder extends Seeder
             'email' => 'vanhung@gmail.com',
             'SDT' => '0353627994',
             'ngayBatDau' => '2024-10-10',
-            'trangThaiKhuonMat' => 0, // Đặt thành 0
-            'IMG' => 'hung.jpg', // Giá trị IMG có thể NULL
-            'maVaiTro' => 3, // Nhân viên
-            'maCongTy' => 1, // Công ty 1
+            'trangThaiKhuonMat' => 0, 
+            'IMG' => null, 
+            'maVaiTro' => 3, 
+            'maCongTy' => 1,
         ]);
 
         DB::table('taikhoan')->insert([
             'tenDN' => '01003',
-            'matKhau' => bcrypt('123'), // Mã hóa mật khẩu
+            'matKhau' => bcrypt('123'), 
             'maND' => $employeeId
         ]);
     }

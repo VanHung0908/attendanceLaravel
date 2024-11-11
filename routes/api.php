@@ -21,7 +21,9 @@ Route::post('/baoCaoTheoThoiGian', [ChamCongController::class, 'baoCaoTheoThoiGi
 Route::post('/updateUser', [NguoiDungController::class, 'updateUser']);
 Route::post('/savelocation', [ViTriController::class, 'saveLocation']);
 Route::post('/locations/active', [ViTriController::class, 'getActiveLocation']);
-
+Route::get('/employees', [NguoiDungController::class, 'getEmployees']);
+Route::post('/baocaochamcong', [ChamCongController::class, 'getChamCongByPeriod']);
+Route::post('/exportexcel', [ChamCongController::class, 'export']);
 // Phú 
 Route::get('/congty', [CongTyController::class, 'getCompany']);
 Route::post('/congty', [CongTyController::class, 'storeCompany']);
@@ -31,7 +33,10 @@ Route::delete('/congty/{maCongTy}', [CongTyController::class, 'deleteCompany']);
 Route::get('/nhanvien', [NguoiDungController::class, 'getNhanVien']);
 Route::get('/nhanvien/{maND}', [NguoiDungController::class, 'getNhanVienById']);
 Route::post('/nhanvien', [NguoiDungController::class, 'addEmployee']);
+Route::put('/nhanvien/{maND}', [NguoiDungController::class, 'updateEmployee']);
 Route::delete('/nhanvien/{maND}', [NguoiDungController::class, 'deleteEmployee']);
 Route::post('/quanly', [NguoiDungController::class, 'addManager']);
+Route::get('/nhanviencongty/{maCongTy}', [NguoiDungController::class, 'getEmployeeByCompanyID']);
+
 
 
