@@ -7,10 +7,12 @@ use Illuminate\Http\Request;
 
 class CongTyController extends Controller
 {
-    public function getCompany()
+    public function getCompany(Request $request)
     {
-        // Lấy danh sách công ty
-        $congTy = CongTy::all();
+        $searchQuery = $request->query('query', '');
+    
+        $congTy = CongTy::where('tenCongTy', 'like', '%' . $searchQuery . '%')->get();
+    
         return response()->json($congTy);
     }
 
@@ -25,7 +27,10 @@ class CongTyController extends Controller
             'nguoiDaiDien' => 'required|string|max:255',
             'linhVucKinhDoanh' => 'required|string|max:255',
             'trangThai' => 'required|string|max:255',
+            'gioBatDau' => 'nullable|date_format:H:i',
+            'gioKetThuc' => 'nullable|date_format:H:i',
         ]);
+        
 
         // Tạo công ty mới
         $congTy = CongTy::create($request->all());
@@ -51,42 +56,45 @@ class CongTyController extends Controller
     }
 
     public function update(Request $request, $maCongTy)
-    {
-        // Tìm công ty theo mã
-        $company = CongTy::where('maCongTy', $maCongTy)->first();
+{
+    // Tìm công ty theo mã
+    $company = CongTy::where('maCongTy', $maCongTy)->first();
 
-        // Kiểm tra xem công ty có tồn tại không
-        if (!$company) {
-            return response()->json(['message' => 'Công ty không tồn tại'], 404);
-        }
-
-         // Xác thực dữ liệu đầu vào với các trường có thể được gửi
-        $validatedData = $request->validate([
-            'tenCongTy' => 'nullable|string|max:255',
-            'diaChi' => 'nullable|string|max:255',
-            'soDienThoai' => 'nullable|string|max:15',
-        ]);
-
-        // Cập nhật thông tin công ty
-        $company->update(array_filter($validatedData));
-
-        return response()->json([
-            'message' => 'Cập nhật công ty thành công',
-            'company' => $company
-        ], 200);
-        
-        // Cập nhật thông tin công ty mà không cần xác thực
-        // Lấy tất cả dữ liệu từ yêu cầu
-        // $data = $request->all();
-
-        // // Cập nhật thông tin công ty
-        // $company->update($data);
-
-        // return response()->json([
-        //     'message' => 'Cập nhật công ty thành công',
-        //     'company' => $company
-        // ], 200);
+    // Kiểm tra xem công ty có tồn tại không
+    if (!$company) {
+        return response()->json(['message' => 'Công ty không tồn tại'], 404);
     }
+
+    // Xác thực dữ liệu đầu vào với các trường có thể được gửi
+    $validatedData = $request->validate([
+        'tenCongTy' => 'nullable|string|max:255',
+        'diaChi' => 'nullable|string|max:255',
+        'soDienThoai' => 'nullable|string|max:15',
+        'gioBatDau' => 'nullable|date_format:H:i',  
+        'gioKetThuc' => 'nullable|date_format:H:i', 
+        'gioNghi' => 'nullable|numeric', 
+    ]);
+
+    // Cập nhật thông tin giờ bắt đầu và giờ kết thúc nếu có
+    if ($request->has('gioBatDau')) {
+        $company->gioBatDau = $request->input('gioBatDau');
+    }
+    if ($request->has('gioKetThuc')) {
+        $company->gioKetThuc = $request->input('gioKetThuc');
+    }
+    if ($request->has('gioNghi')) {
+        $company->gioNghi = (float)$request->input('gioNghi'); // Chuyển đổi gioNghi thành float
+    }
+
+    // Cập nhật các trường còn lại
+    $company->update(array_filter($validatedData));
+
+    return response()->json([
+        'message' => 'Cập nhật công ty thành công',
+        'company' => $company
+    ], 200);
+}
+
 
     public function deleteCompany($maCongTy)
     {
@@ -149,5 +157,34 @@ class CongTyController extends Controller
             'data' => $congTy
         ]);
     }
+    public function uploadLogo(Request $request, $companyId)
+    {
+        // Kiểm tra công ty có tồn tại
+        $company = CongTy::find($companyId);
+        if (!$company) {
+            return response()->json(['message' => 'Công ty không tồn tại'], 404);
+        }
+    
+        // Kiểm tra xem request có tệp logo không
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+    
+            // Lưu tệp vào thư mục public/uploads
+            $filePath = $file->store('uploads', 'public');
+    
+            // Cập nhật URL logo trong cơ sở dữ liệu
+            $company->IMG = $filePath; // Lưu đường dẫn tệp vào trường IMG
+            $company->save();
+    
+            return response()->json([
+                'message' => 'Upload logo thành công',
+                'logoUrl' => asset('storage/' . $filePath), // Trả về URL đầy đủ của logo
+            ]);
+        }
+    
+        return response()->json(['message' => 'Không tìm thấy tệp logo'], 400);
+    }
+    
+    
 }
 

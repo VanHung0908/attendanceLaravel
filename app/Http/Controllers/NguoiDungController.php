@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\NguoiDung;
 use App\Models\TaiKhoan;  
+use App\Models\CongTy;  
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Carbon;
@@ -57,6 +58,65 @@ class NguoiDungController extends Controller
             ], 405);
         }
     }
+    public function getNDCongTY(Request $request)
+    {
+        // Kiểm tra phương thức HTTP
+        if ($request->isMethod('post')) {
+            // Kiểm tra xem maND có trong request không
+            if ($request->has('maND')) {
+                $maND = $request->input('maND');
+        
+                // Tìm người dùng theo maND
+                try {
+                    $user = NguoiDung::where('maND', $maND)->first();
+        
+                    if ($user) {
+                        // Lấy maCongTy từ người dùng
+                        $maCongTy = $user->maCongTy;
+                        
+                        // Lấy tên công ty từ bảng CongTy
+                        $company = CongTy::where('maCongTy', $maCongTy)->first();
+                        
+                        if ($company) {
+                            return response()->json([
+                                'status' => 'success',
+                                'data' => [
+                                    'nguoiDung' => $user,  // Trả về thông tin người dùng
+                                    'tenCongTy' => $company->tenCongTy  // Trả về tên công ty
+                                ]
+                            ]);
+                        } else {
+                            return response()->json([
+                                'status' => 'error',
+                                'message' => 'Không tìm thấy công ty'
+                            ], 404);
+                        }
+                    } else {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Không tìm thấy người dùng'
+                        ], 404);
+                    }
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Đã xảy ra lỗi: ' . $e->getMessage()
+                    ], 500);
+                }
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Thiếu thông tin maND'
+                ], 400);
+            }
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Yêu cầu không hợp lệ, vui lòng sử dụng phương thức POST'
+            ], 405);
+        }
+    }
+    
 
     public function updateFaceStatus(Request $request)
     {
@@ -235,14 +295,21 @@ class NguoiDungController extends Controller
         // Trả về dữ liệu nhân viên
         return response()->json($nhanVien);
     }
-    public function getEmployeeByCompanyID($companyID)
+    public function getEmployeeByCompanyID($companyID, $searchQuery = null)
     {
-        // Lấy danh sách nhân viên thuộc công ty có companyID và có maVaiTro = 3
-        $employees = NguoiDung::where('maCongTy', $companyID)
-                        ->where('maVaiTro', 3)
-                        ->get();
+        // Start building the query to get employees for the specified company ID and role
+        $query = NguoiDung::where('maCongTy', $companyID)
+                          ->where('maVaiTro', 3);
     
-        // Kiểm tra nếu không có nhân viên nào được tìm thấy
+        // Apply search condition for 'hoTen' if searchQuery is provided
+        if (!is_null($searchQuery) && !empty($searchQuery)) {
+            $query->where('hoTen', 'like', '%' . $searchQuery . '%');
+        }
+    
+        // Execute the query to get the employees
+        $employees = $query->get();
+    
+        // Check if no employees were found
         if ($employees->isEmpty()) {
             return response()->json([
                 'success' => false,
@@ -250,12 +317,13 @@ class NguoiDungController extends Controller
             ], 404);
         }
     
-        // Trả về danh sách nhân viên
+        // Return the list of employees
         return response()->json([
             'success' => true,
             'data' => $employees,
         ], 200);
     }
+    
     public function addEmployee(Request $request)
     {
         try {
@@ -444,6 +512,114 @@ class NguoiDungController extends Controller
             'message' => 'Cập nhật thông tin nhân viên thành công',
             'employee' => $employee
         ], 200);
+    }
+    public function getManagerByCompanyId($maCongTy)
+    {
+        // Truy vấn người quản lý và lấy tên đăng nhập từ bảng TaiKhoan
+        $managers = NguoiDung::where('maCongTy', $maCongTy)
+                            ->where('maVaiTro', 2) // Giả sử vai trò "2" là người quản lý
+                            ->with('taiKhoan') // Eager load quan hệ với bảng TaiKhoan
+                            ->get();
+    
+        if ($managers->isEmpty()) {
+            return response()->json([
+                'error' => 'No managers found for this company'
+            ], 404);
+        }
+    
+        // Trả về danh sách người quản lý cùng tên đăng nhập
+        return response()->json([
+            'data' => $managers->map(function ($manager) {
+                return [
+                    'hoTen' => $manager->hoTen,
+                    'tenDN' => $manager->taiKhoan->tenDN, // Lấy tên đăng nhập từ bảng TaiKhoan
+                ];
+            })
+        ], 200);
+    }
+    
+    public function showAccount($maCongTy)
+    {
+        // Truy vấn với JOIN giữa NguoiDung và TaiKhoan
+        $result = DB::table('nguoidung')
+            ->join('taikhoan', 'nguoidung.maND', '=', 'taikhoan.maND')
+            ->where('nguoidung.maVaiTro', 2)
+            ->where('nguoidung.maCongTy', $maCongTy)
+            ->select('taikhoan.tenTK', 'taikhoan.matKhau')
+            ->get();
+
+        // Kiểm tra nếu không tìm thấy kết quả
+        if ($result->isEmpty()) {
+            return response()->json([
+                'message' => 'Không tìm thấy người dùng nào với maCongTy: ' . $maCongTy
+            ], 404);
+        }
+
+        return response()->json($result);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+    
+        $email = $request->input('email');
+    
+        // Kiểm tra email có tồn tại trong bảng nguoidung không
+        $nguoiDung = NguoiDung::where('email', $email)->first();
+    
+        if (!$nguoiDung) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email không tồn tại trong hệ thống.',
+            ], 404);
+        }
+    
+        // Lấy mã người dùng (maND)
+        $maND = $nguoiDung->maND;
+    
+        // Tìm tài khoản tương ứng trong bảng taikhoan
+        $taiKhoan = TaiKhoan::where('maND', $maND)->first();
+    
+        if (!$taiKhoan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy tài khoản liên kết với email này.',
+            ], 404);
+        }
+    
+        $tenTaiKhoan = $taiKhoan->tenDN;
+    
+        // Tạo mật khẩu mới ngẫu nhiên
+        $matKhau = Str::random(8);
+    
+        // Cập nhật mật khẩu trong cơ sở dữ liệu
+        $taiKhoan->matKhau = Hash::make($matKhau);
+        $updateSuccess = $taiKhoan->save();
+    
+        if (!$updateSuccess) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể cập nhật mật khẩu. Vui lòng thử lại sau.',
+            ], 500);
+        }
+    
+        // Gửi email với mật khẩu mới
+        try {
+            Mail::to($request->email)->queue(new AccountCreatedMail($tenTaiKhoan, $matKhau));
+            Log::info('Email sent successfully to ' . $request->email);
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Mật khẩu mới đã được gửi đến email của bạn.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gửi email thất bại: ' . $e->getMessage(),
+            ], 500);
+        }
     }
     
 

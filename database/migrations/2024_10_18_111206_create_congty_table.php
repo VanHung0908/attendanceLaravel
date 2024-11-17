@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('email');
             $table->string('nguoiDaiDien');
             $table->string('linhVucKinhDoanh');
+            $table->string('IMG');
             $table->time('gioBatDau')->nullable();
             $table->time('gioKetThuc')->nullable();
             $table->float('gioNghi')->nullable();

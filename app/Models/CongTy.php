@@ -21,6 +21,10 @@ class CongTy extends Model
         'nguoiDaiDien',
         'linhVucKinhDoanh',
         'trangThai',
+        'IMG',
+        'gioBatDau',
+        'gioKetThuc',
+        'gioNghi',
     ]; 
 
     public function nguoiDungs()
