@@ -26,7 +26,6 @@ class CongTyController extends Controller
             'email' => 'required|string|email|max:255',
             'nguoiDaiDien' => 'required|string|max:255',
             'linhVucKinhDoanh' => 'required|string|max:255',
-            'trangThai' => 'required|string|max:255',
             'gioBatDau' => 'nullable|date_format:H:i',
             'gioKetThuc' => 'nullable|date_format:H:i',
         ]);

@@ -357,7 +357,6 @@ class NguoiDungController extends Controller
                 'email' => $request->email,
                 'SDT' => $request->SDT,
                 'ngayBatDau' => Carbon::now()->toDateString(), // Ngày bắt đầu
-                'ngayKetThuc' => null, // Ngày kết thúc
                 'trangThaiKhuonMat' => '0', // Trạng thái khuôn mặt
                 'maVaiTro' => 3, // Mã vai trò
                 'maCongTy' => $request->maCongTy,
@@ -416,7 +415,6 @@ class NguoiDungController extends Controller
                 'email' => $request->email,
                 'SDT' => $request->SDT,
                 'ngayBatDau' => Carbon::now()->toDateString(), // Ngày bắt đầu
-                'ngayKetThuc' => null, // Ngày kết thúc
                 'trangThaiKhuonMat' => '0', // Trạng thái khuôn mặt
                 'maVaiTro' => 2, // Mã vai trò
                 'maCongTy' => $request->maCongTy,

@@ -20,7 +20,6 @@ return new class extends Migration
             $table->string('email', 191)->unique();
             $table->string('SDT');
             $table->date('ngayBatDau');
-            $table->date('ngayKetThuc')->nullable();
             $table->boolean('trangThaiKhuonMat')->nullable(); // Sử dụng kiểu boolean
             $table->string('IMG')->nullable(); // Thêm thuộc tính IMG
             $table->foreignId('maVaiTro')->constrained('vaitro');

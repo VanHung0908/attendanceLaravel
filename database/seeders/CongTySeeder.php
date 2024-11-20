@@ -22,7 +22,6 @@ class CongTySeeder extends Seeder
                 'email' => 'customerservice@highlandscoffee.com.vn',
                 'nguoiDaiDien' => 'David Thái',
                 'linhVucKinhDoanh' => 'F&B',
-                'trangThai' => 'Đang hoạt động',
             ],
            
         ]);
